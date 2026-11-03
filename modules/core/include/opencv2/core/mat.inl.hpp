@@ -152,10 +152,10 @@ CV__DEBUG_NS_BEGIN
 //////////////////////// Input/Output Arrays ////////////////////////
 
 inline void _InputArray::init(int _flags, const void* _obj)
-{ flags = _flags; obj = (void*)_obj; }
+{ flags = _flags & ~OWNED_OBJ; obj = (void*)_obj; }
 
 inline void _InputArray::init(int _flags, const void* _obj, Size _sz)
-{ flags = _flags; obj = (void*)_obj; sz = _sz; }
+{ flags = _flags & ~OWNED_OBJ; obj = (void*)_obj; sz = _sz; }
 
 inline void* _InputArray::getObj() const { return obj; }
 inline _InputArray::KindFlag _InputArray::kind() const {
@@ -213,6 +213,18 @@ _InputArray::_InputArray(const Mat_<_Tp>& m)
 inline _InputArray::_InputArray(const double& val)
 { init(FIXED_TYPE + FIXED_SIZE + MATX + CV_64F + ACCESS_READ, &val, Size(1,1)); }
 
+inline _InputArray::_InputArray(double&& val)
+{
+    init(FIXED_TYPE + FIXED_SIZE + MATX + CV_64F + ACCESS_READ, new double(val), Size(1,1));
+    flags |= OWNED_OBJ;
+}
+
+inline _InputArray::_InputArray(const double&& val)
+{
+    init(FIXED_TYPE + FIXED_SIZE + MATX + CV_64F + ACCESS_READ, new double(val), Size(1,1));
+    flags |= OWNED_OBJ;
+}
+
 inline _InputArray::_InputArray(const cuda::GpuMat& d_mat)
 { init(+CUDA_GPU_MAT + ACCESS_READ, &d_mat); }
 
@@ -250,7 +262,36 @@ _InputArray _InputArray::rawIn(const std::array<_Tp, _Nm>& arr)
     return v;
 }
 
-inline _InputArray::~_InputArray() {}
+inline _InputArray::_InputArray(const _InputArray& arr)
+    : flags(arr.flags), obj(arr.obj), sz(arr.sz)
+{
+    if (flags & OWNED_OBJ)
+        obj = new double(*static_cast<const double*>(arr.obj));
+}
+
+inline _InputArray& _InputArray::operator=(const _InputArray& arr)
+{
+    if (this != &arr)
+    {
+        void* newObj = arr.obj;
+        if (arr.flags & OWNED_OBJ)
+            newObj = new double(*static_cast<const double*>(arr.obj));
+
+        if (flags & OWNED_OBJ)
+            delete static_cast<double*>(obj);
+
+        flags = arr.flags;
+        obj = newObj;
+        sz = arr.sz;
+    }
+    return *this;
+}
+
+inline _InputArray::~_InputArray()
+{
+    if (flags & OWNED_OBJ)
+        delete static_cast<double*>(obj);
+}
 
 #if defined(__GNUC__) || defined(__clang__)
 #  define CV_IS_COMPILE_TIME_CONSTANT(x) __builtin_constant_p(x)

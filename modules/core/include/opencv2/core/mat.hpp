@@ -321,6 +321,8 @@ public:
     template<typename _Tp> _InputArray(const _Tp* vec, int n);
     template<typename _Tp, int m, int n> _InputArray(const Matx<_Tp, m, n>& matx);
     _InputArray(const double& val);
+    _InputArray(double&& val);
+    _InputArray(const double&& val);
     _InputArray(const cuda::GpuMat& d_mat);
     _InputArray(const std::vector<cuda::GpuMat>& d_mat_array);
     _InputArray(const cuda::GpuMatND& d_mat);
@@ -336,6 +338,9 @@ public:
 
     template<typename _Tp> static _InputArray rawIn(const std::vector<_Tp>& vec);
     template<typename _Tp, std::size_t _Nm> static _InputArray rawIn(const std::array<_Tp, _Nm>& arr);
+
+    _InputArray(const _InputArray& arr);
+    _InputArray& operator=(const _InputArray& arr);
 
     Mat getMat(int idx=-1) const;
     Mat getMat_(int idx=-1) const;
@@ -393,6 +398,8 @@ protected:
     void init(int _flags, const void* _obj, Size _sz);
 
 private:
+    enum { OWNED_OBJ = 1 << 27 };
+
     int dims_(int i=-1) const;
     int cols_(int i=-1) const;
     int rows_(int i=-1) const;
