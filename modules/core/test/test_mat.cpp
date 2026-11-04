@@ -1575,6 +1575,42 @@ TEST(Core_InputArray, empty)
     ASSERT_TRUE( _InputArray(data).empty() );
 }
 
+TEST(Core_InputArray, temporary_scalar_lifetime_29470)
+{
+    InputArray one(1);
+    Mat mat = one.getMat();
+    ASSERT_FALSE(mat.empty());
+    EXPECT_EQ(1.0, mat.at<double>(0, 0));
+}
+
+TEST(Core_InputArray, temporary_scalar_copy_29470)
+{
+    _InputArray copied(9);
+    _InputArray assigned(8);
+    {
+        _InputArray original(1);
+        _InputArray copyConstructed(original);
+        copied = copyConstructed;
+        assigned = original;
+        original = original;
+    }
+
+    EXPECT_EQ(1.0, copied.getMat().at<double>(0, 0));
+    EXPECT_EQ(1.0, assigned.getMat().at<double>(0, 0));
+
+    copied = copied;
+    copied = _InputArray();
+    EXPECT_EQ(1.0, assigned.getMat().at<double>(0, 0));
+}
+
+TEST(Core_InputArray, scalar_lvalue_is_borrowed)
+{
+    double scalar = 2.0;
+    _InputArray input(scalar);
+    EXPECT_EQ(&scalar, input.getObj());
+    EXPECT_EQ(2.0, input.getMat().at<double>(0, 0));
+}
+
 TEST(Core_InputArray, element_empty)
 {
     Mat src = Mat::ones(2, 2, CV_8U);
